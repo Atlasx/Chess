@@ -50,6 +50,42 @@ void UBoardSubsystem::OnActorSpawned(AActor* SpawnedActor)
 	}
 }
 
+FVector UBoardComponent::DirectionToOffset(const EBoardDirection& Dir)
+{
+	switch (Dir)
+	{
+	case EBoardDirection::Up: return FVector(0.f, 0.f, 1.f);
+	case EBoardDirection::Right: return FVector(1.f, 0.f, 0.f);
+	case EBoardDirection::Down: return FVector(0.f, 0.f, -1.f);
+	case EBoardDirection::Left: return FVector(-1.f, 0.f, 0.f);
+	case EBoardDirection::UpRight: return FVector(1.f, 0.f, 1.f);
+	case EBoardDirection::DownRight: return FVector(1.f, 0.f, -1.f);
+	case EBoardDirection::UpLeft: return FVector(-1.f, 0.f, 1.f);
+	case EBoardDirection::DownLeft: return FVector(-1.f, 0.f, -1.f);
+	}
+}
+
+/* Board Component */
+void UBoardComponent::AddNode(FVector Location, uint8 Flags)
+{
+	const FVector localPosition = GetComponentTransform().InverseTransformPosition(Location);
+	const int32 nodeIndex = Nodes.Emplace(localPosition, Flags);
+	FBoardNode* node = Nodes[nodeIndex];
+
+	// Find neighboring nodes
+	for (int y = -1; y <= 1; ++y)
+	{
+		for (int x = -1; x <= 1; ++x)
+		{
+			FVector searchLocation = Location;
+			searchLocation += GetRightVector() * x;
+			searchLocation += GetForwardVector() * y;
+			FBoardNode* neighbor = nullptr;
+			if (GetNodeAt(searchLocation, neighbor))
+		}
+	}
+}
+
 /*
 * Board Actor
 */

@@ -9,14 +9,14 @@
 
 enum class EBoardDirection : uint8
 {
-    North,
-    East,
-    South,
-    West,
-    Northwest,
-    Northeast,
-    Southwest,
-    Southeast,
+    Up,
+    Right,
+    Down,
+    Left,
+    UpRight,
+    DownRight,
+    UpLeft,
+    DownLeft,
     MAX
 };
 
@@ -40,6 +40,27 @@ struct FBoardNode
 
     UPROPERTY()
     int32 Neighbors[static_cast<uint8>(EBoardDirection::MAX)];
+};
+
+UCLASS()
+class CHESSGAME_API UBoardComponent : public USceneComponent
+{
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere)
+    TArray<FBoardNode> Nodes;
+    TArray<FBoardNode*> ExternalNodes;
+
+public:
+    virtual FVector DirectionToOffset(const EBoardDirection& Dir);
+    virtual EBoardDirection OffsetToDirection(const FVector& Offset);
+
+    void AddNode(FVector Location, uint8 Flags);
+    void RemoveNode(FVector Location);
+
+    bool GetNodeAt(FVector location, FBoardNode* OutNode, float Tolerance = 10.f);
+
+    void RebuildGraph();
 };
 
 UCLASS()
