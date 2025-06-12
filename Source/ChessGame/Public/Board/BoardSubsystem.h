@@ -20,6 +20,28 @@ enum class EBoardDirection : uint8
     MAX
 };
 
+inline EBoardDirection& operator++(EBoardDirection& Dir)
+{
+    Dir = static_cast<EBoardDirection>((static_cast<uint8>(Dir) + 1) % static_cast<uint8>(EBoardDirection::MAX));
+    return Dir;
+}
+
+static EBoardDirection ReverseDirection(const EBoardDirection& Dir)
+{
+    switch (Dir)
+    {
+    case EBoardDirection::Up: return EBoardDirection::Down;
+    case EBoardDirection::Right: return EBoardDirection::Left;
+    case EBoardDirection::Down: return EBoardDirection::Up;
+    case EBoardDirection::Left: return EBoardDirection::Right;
+    case EBoardDirection::UpRight: return EBoardDirection::DownLeft;
+    case EBoardDirection::DownRight: return EBoardDirection::UpLeft;
+    case EBoardDirection::UpLeft: return EBoardDirection::DownRight;
+    case EBoardDirection::DownLeft: return EBoardDirection::UpRight;
+    }
+    return EBoardDirection::MAX;
+}
+
 enum class ENodeFlags : uint8
 {
     None = 0 UMETA(Hidden),
@@ -53,12 +75,23 @@ class CHESSGAME_API UBoardComponent : public USceneComponent
 
 public:
     virtual FVector DirectionToOffset(const EBoardDirection& Dir);
-    virtual EBoardDirection OffsetToDirection(const FVector& Offset);
+    //virtual EBoardDirection OffsetToDirection(const FVector& Offset);
+
+    UFUNCTION(CallInEditor)
+    void BuildGraph();
 
     void AddNode(FVector Location, uint8 Flags);
+    void AddNode(FBoardNode* Neighbor, const EBoardDirection& Dir, uint8 Flags);
+
     void RemoveNode(FVector Location);
 
-    bool GetNodeAt(FVector location, FBoardNode* OutNode, float Tolerance = 10.f);
+    int32 GetNodeIndex(FBoardNode* Node);
+
+    /* Find the node within a tolerance of a location */
+    bool FindNodeAt(FVector Location, FBoardNode* OutNode, float Tolerance = 10.f);
+
+    /* Find the node closest to the location */
+    bool FindClosestNode(FVector Location, FBoardNode* OutNode);
 
     void RebuildGraph();
 };
@@ -68,21 +101,11 @@ class CHESSGAME_API ABoardActor : public AActor
 {
     GENERATED_BODY()
 
-    UPROPERTY(EditAnywhere)
-    TArray<FBoardNode> GraphNodes;
-
-    TArray<FBoardNode*> ExternalConnections;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UBoardComponent* BoardComponent;
 
 public:
     /* Connection Management */
-    UFUNCTION(CallInEditor)
-    void BuildGraph();
-
-    UFUNCTION(BlueprintCallable, CallInEditor)
-    void RebuildGraph();
-
-    void ConnectNodes(const FBoardNode& First, const FBoardNode& Second, EBoardDirection Dir);
-    void DisconnectNodes(const FBoardNode& First, const FBoardNode& Second);
 
     UFUNCTION(BlueprintCallable)
     void ConnectExternal(ABoardActor* Other);
@@ -90,23 +113,12 @@ public:
     UFUNCTION(BlueprintCallable)
     void DisconnectExternal(ABoardActor* Other);
 
-    /* Navigation Requests */
-    FBoardNode* GetNodeAtLocation(const FVector& Location, float Tolerance = 50.f) const;
-    FBoardNode* GetClosestNode(const FVector& Location) const;
-
-    bool HasPath(const FBoardNode* From, const FBoardNode* To) const;
-    bool FindPath(const FBoardNode* Start, const FBoardNode* End, TArray<const FBoardNode*>& OutPath) const;
-
     /* Debug */
     UFUNCTION(CallInEditor)
     void DrawDebugGraph() const;
 
     UFUNCTION(CallInEditor)
     void DrawDebugPath(const TArray<FVector>& Path, FColor Color = FColor::Green) const;
-
-protected:
-    inline bool GetNodeNeighbor(const FBoardNode& node,const EBoardDirection& direction, FBoardNode* OutNode);
-    inline bool GetConstNodeNeighbor(const FBoardNode& node, const EBoardDirection& direction, const FBoardNode* OutNode) const;
 };
 
 /**

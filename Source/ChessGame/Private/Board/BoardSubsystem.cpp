@@ -50,6 +50,9 @@ void UBoardSubsystem::OnActorSpawned(AActor* SpawnedActor)
 	}
 }
 
+/*
+* Board Component
+*/
 FVector UBoardComponent::DirectionToOffset(const EBoardDirection& Dir)
 {
 	switch (Dir)
@@ -63,27 +66,84 @@ FVector UBoardComponent::DirectionToOffset(const EBoardDirection& Dir)
 	case EBoardDirection::UpLeft: return FVector(-1.f, 0.f, 1.f);
 	case EBoardDirection::DownLeft: return FVector(-1.f, 0.f, -1.f);
 	}
+	return FVector::ZeroVector;
 }
 
-/* Board Component */
 void UBoardComponent::AddNode(FVector Location, uint8 Flags)
 {
 	const FVector localPosition = GetComponentTransform().InverseTransformPosition(Location);
 	const int32 nodeIndex = Nodes.Emplace(localPosition, Flags);
-	FBoardNode* node = Nodes[nodeIndex];
+	FBoardNode* node = &Nodes[nodeIndex];
 
-	// Find neighboring nodes
-	for (int y = -1; y <= 1; ++y)
+	// Find neighboring nodes and setup logical connections
+	for (EBoardDirection Dir = EBoardDirection::Up; Dir != EBoardDirection::MAX; ++Dir)
 	{
-		for (int x = -1; x <= 1; ++x)
+		FVector searchLocation = localPosition + DirectionToOffset(Dir);
+		FBoardNode* neighbor = nullptr;
+		if (FindNodeAt(searchLocation, neighbor))
 		{
-			FVector searchLocation = Location;
-			searchLocation += GetRightVector() * x;
-			searchLocation += GetForwardVector() * y;
-			FBoardNode* neighbor = nullptr;
-			if (GetNodeAt(searchLocation, neighbor))
+			const int32 neighborIndex = GetNodeIndex(neighbor);
+			node->Neighbors[static_cast<int32>(Dir)] = neighborIndex;
+			neighbor->Neighbors[static_cast<int32>(ReverseDirection(Dir))] = nodeIndex;
 		}
 	}
+}
+
+void UBoardComponent::AddNode(FBoardNode* Neighbor, const EBoardDirection& Dir, uint8 Flags)
+{
+	UE_LOG(LogTemp, Error, TEXT("Used wrong AddNode"));
+}
+
+int32 UBoardComponent::GetNodeIndex(FBoardNode* Node)
+{
+	for (int i = 0; i < Nodes.Num(); ++i)
+	{
+		if (&Nodes[i] == Node)
+		{
+			return i;
+		}
+	}
+
+	return -1;
+}
+
+// Could use a A* search here to get closer to the location
+bool UBoardComponent::FindNodeAt(FVector Location, FBoardNode* OutNode, float Tolerance /*= 10.f*/)
+{
+	const float sqrTolerance = Tolerance * Tolerance;
+	const FVector localPosition = GetComponentTransform().InverseTransformPosition(Location);
+
+	for (FBoardNode& node : Nodes)
+	{
+		if (FVector::DistSquared(localPosition, node.Position) <= sqrTolerance)
+		{
+			OutNode = &node;
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool UBoardComponent::FindClosestNode(FVector Location, FBoardNode* OutNode)
+{
+	float SqrNearest = MAX_FLT;
+	FBoardNode* NearestNode = nullptr;
+
+	for (FBoardNode& node : Nodes)
+	{
+		const float SqrDist = FVector::DistSquared(Location, node.Position);
+		if (SqrDist < SqrNearest)
+		{
+			SqrNearest = SqrDist;
+			NearestNode = &node;
+		}
+	}
+
+	if (NearestNode == nullptr) { return false; }
+
+	OutNode = NearestNode;
+	return true;
 }
 
 /*
@@ -159,7 +219,7 @@ void ABoardActor::DrawDebugGraph() const
 		{
 			FBoardNode* other = nullptr;
 			EBoardDirection nodeDir = static_cast<EBoardDirection>(dir);
-			if (GetConstNodeNeighbor(node, nodeDir, other) == false) { continue; }
+			//if (GetConstNodeNeighbor(node, nodeDir, other) == false) { continue; }
 			
 			DrawDebugLine(World, node.Position, other->Position, FColor::Blue);
 		}
@@ -169,28 +229,4 @@ void ABoardActor::DrawDebugGraph() const
 void ABoardActor::DrawDebugPath(const TArray<FVector>& Path, FColor Color /*= FColor::Green*/) const
 {
 	
-}
-
-inline bool ABoardActor::GetNodeNeighbor(const FBoardNode& node, const EBoardDirection& direction, const FBoardNode& OutNode)
-{
-	int32 otherIndex = node.Neighbors[static_cast<uint8>(direction)];
-	if (otherIndex >= GraphNodes.Num())
-	{ 
-		OutNode = nullptr;
-		return false;
-	}
-
-	OutNode = &GraphNodes[otherIndex];
-	return OutNode != nullptr;
-}
-
-bool ABoardActor::GetConstNodeNeighbor(const FBoardNode& node, const EBoardDirection& direction, const FBoardNode* OutNode) const
-{
-	FBoardNode* OtherNode;
-	if (GetNodeNeighbor(node, direction, OtherNode))
-	{
-		OutNode = const_cast<const FBoardNode*>(OtherNode);
-		return true;
-	}
-	return false;
 }
