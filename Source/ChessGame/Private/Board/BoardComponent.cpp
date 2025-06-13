@@ -7,14 +7,14 @@ FVector UBoardComponent::DirectionToOffset(const EBoardDirection& Dir)
 {
 	switch (Dir)
 	{
-	case EBoardDirection::Up: return FVector(0.f, 0.f, 1.f);
+	case EBoardDirection::Up: return FVector(0.f, 1.f, 0.f);
 	case EBoardDirection::Right: return FVector(1.f, 0.f, 0.f);
-	case EBoardDirection::Down: return FVector(0.f, 0.f, -1.f);
+	case EBoardDirection::Down: return FVector(0.f, -1.f, 0.f);
 	case EBoardDirection::Left: return FVector(-1.f, 0.f, 0.f);
-	case EBoardDirection::UpRight: return FVector(1.f, 0.f, 1.f);
-	case EBoardDirection::DownRight: return FVector(1.f, 0.f, -1.f);
-	case EBoardDirection::UpLeft: return FVector(-1.f, 0.f, 1.f);
-	case EBoardDirection::DownLeft: return FVector(-1.f, 0.f, -1.f);
+	case EBoardDirection::UpRight: return FVector(1.f, 1.f, 0.f);
+	case EBoardDirection::DownRight: return FVector(1.f, -1.f, 0.f);
+	case EBoardDirection::UpLeft: return FVector(-1.f, 1.f, 0.f);
+	case EBoardDirection::DownLeft: return FVector(-1.f, -1.f, 0.f);
 	}
 	return FVector::ZeroVector;
 }
@@ -23,10 +23,14 @@ void UBoardComponent::BuildGraph()
 {
 	FVector location(0.f, 0.f, 0.f);
 	FVector offset(100.f, 0.f, 0.f);
+	FVector altOffset(0.f, 100.f, 0.f);
 
 	for (int i = 0; i < 10; ++i)
 	{
-		AddNode(location + i * offset, 0);
+		for (int j = 0; j < 10; ++j)
+		{
+			AddNode(location + i * offset + j * altOffset, 0);
+		}
 	}
 }
 
@@ -41,7 +45,7 @@ void UBoardComponent::AddNode(FVector Location, uint8 Flags)
 	{
 		FVector searchLocation = localPosition + DirectionToOffset(Dir);
 		FBoardNode* neighbor = nullptr;
-		if (FindNodeAt(searchLocation, neighbor))
+		if (FindNodeAtLocal(searchLocation, &neighbor))
 		{
 			const int32 neighborIndex = GetNodeIndex(neighbor);
 			node->Neighbors[static_cast<int32>(Dir)] = neighborIndex;
@@ -69,16 +73,21 @@ int32 UBoardComponent::GetNodeIndex(FBoardNode* Node)
 }
 
 // Could use a A* search here to get closer to the location
-bool UBoardComponent::FindNodeAt(FVector Location, FBoardNode* OutNode, float Tolerance /*= 10.f*/)
+bool UBoardComponent::FindNodeAt(FVector Location, FBoardNode** OutNode, float Tolerance /*= 10.f*/)
+{
+	const FVector localPosition = GetComponentTransform().InverseTransformPosition(Location);
+	return FindNodeAtLocal(localPosition, OutNode, Tolerance);
+}
+
+bool UBoardComponent::FindNodeAtLocal(FVector Location, FBoardNode** OutNode, float Tolerance /*=10.f*/)
 {
 	const float sqrTolerance = Tolerance * Tolerance;
-	const FVector localPosition = GetComponentTransform().InverseTransformPosition(Location);
 
 	for (FBoardNode& node : Nodes)
 	{
-		if (FVector::DistSquared(localPosition, node.Position) <= sqrTolerance)
+		if (FVector::DistSquared(Location, node.Position) <= sqrTolerance)
 		{
-			OutNode = &node;
+			*OutNode = &node;
 			return true;
 		}
 	}
@@ -110,13 +119,16 @@ bool UBoardComponent::FindClosestNode(FVector Location, FBoardNode* OutNode)
 void UBoardComponent::DrawDebugGraph(FPrimitiveDrawInterface* PDI) const
 {
 	constexpr float NodeDrawSize = 20.f;
+	const FTransform transform = GetComponentTransform();
 
 	for (const FBoardNode& node : Nodes)
 	{
+		const FVector nodePosition = transform.TransformPosition(node.Position);
+
 		// Draw Node
 		FColor NodeColor = FColor::Red;
 		if (node.Flags & static_cast<uint8>(ENodeFlags::Navigable)) { NodeColor = FColor::Blue; }
-		PDI->DrawPoint(node.Position, NodeColor, NodeDrawSize, SDPG_World);
+		PDI->DrawPoint(nodePosition, NodeColor, NodeDrawSize, SDPG_World);
 
 		// Draw Connections
 		for (uint8 dir = 0; dir < static_cast<uint8>(EBoardDirection::MAX); ++dir)
@@ -132,7 +144,8 @@ void UBoardComponent::DrawDebugGraph(FPrimitiveDrawInterface* PDI) const
 
 			if (other)
 			{
-				PDI->DrawLine(node.Position, other->Position, FColor::Blue, SDPG_World);
+				const FVector otherPosition = transform.TransformPosition(other->Position);
+				PDI->DrawLine(nodePosition, otherPosition, FColor::Blue, SDPG_World);
 			}
 		}
 	}

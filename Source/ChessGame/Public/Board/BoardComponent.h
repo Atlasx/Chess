@@ -32,7 +32,8 @@ public:
     int32 GetNodeIndex(FBoardNode* Node);
 
     /* Find the node within a tolerance of a location */
-    bool FindNodeAt(FVector Location, FBoardNode* OutNode, float Tolerance = 10.f);
+    bool FindNodeAt(FVector Location, FBoardNode** OutNode, float Tolerance = 10.f);
+    bool FindNodeAtLocal(FVector Location, FBoardNode** OutNode, float Tolerance = 10.f);
 
     /* Find the node closest to the location */
     bool FindClosestNode(FVector Location, FBoardNode* OutNode);

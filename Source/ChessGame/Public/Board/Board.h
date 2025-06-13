@@ -51,12 +51,12 @@ struct FBoardNode
 {
     GENERATED_BODY()
 
-    UPROPERTY()
+    UPROPERTY(EditAnywhere)
     FVector Position;
 
     UPROPERTY()
     uint8 Flags;
 
     UPROPERTY()
-    int32 Neighbors[static_cast<uint8>(EBoardDirection::MAX)];
+    int32 Neighbors[static_cast<uint8>(EBoardDirection::MAX)] = {-1, -1, -1, -1, -1, -1, -1, -1};
 };
