@@ -1,6 +1,6 @@
 {
 	"FileVersion": 3,
-	"EngineAssociation": "5.5",
+	"EngineAssociation": "{10067DA9-47B2-A1A2-9F4C-789DAFA97DFE}",
 	"Category": "",
 	"Description": "",
 	"Modules": [
@@ -13,9 +13,9 @@
 			]
 		},
 		{
-			"Name" : "ChessGameEditor",
+			"Name": "ChessGameEditor",
 			"Type": "Editor",
-			"LoadingPhase":  "PostEngineInit"
+			"LoadingPhase": "PostEngineInit"
 		}
 	],
 	"Plugins": [

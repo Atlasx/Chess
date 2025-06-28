@@ -37,6 +37,13 @@ void UBoardComponent::BuildGraph()
 void UBoardComponent::AddNode(FVector Location, uint8 Flags)
 {
 	const FVector localPosition = GetComponentTransform().InverseTransformPosition(Location);
+	FBoardNode* potentialNode = nullptr;
+	if (FindNodeAtLocal(localPosition, &potentialNode))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Node already exists at location!"));
+		return;
+	}
+
 	const int32 nodeIndex = Nodes.Emplace(localPosition, Flags);
 	FBoardNode* node = &Nodes[nodeIndex];
 
